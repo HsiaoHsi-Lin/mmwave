@@ -11,7 +11,6 @@
 - Arduino Servo 控制
 
 ## 使用方法
-1. 執行 train.py
-2. 執行 inference GUI
-3. 連接 Arduino
-4. 進行即時手部震顫程度偵測
+1. 執行 inference GUI
+2. 連接 Arduino
+3. 進行即時手部震顫程度偵測
