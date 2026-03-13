@@ -34,47 +34,24 @@ RESULT_COLORS = {
 # ── 臨床參考建議（純資訊，非診斷）──────────────────────────────────────
 CLINICAL_ADVICE = {
     "4Hz": {
-        "tag":  "低頻震顫（3–5 Hz）",
-        "note": (
-            "此頻段的靜止型震顫常見於帕金森氏症早期，\n"
-            "也可能與小腦病變或某些藥物副作用相關。\n\n"
-            "⚠ 本結果僅供參考，無法作為診斷依據。\n"
-            "建議諮詢神經科或家醫科醫師進行進一步評估。"
-        ),
+        "tag":  "低頻靜止性震顫（3–5 Hz）",
+        "note": "常見於帕金森氏症靜止性震顫。\n建議盡早至神經內科就診評估。",
     },
     "6Hz": {
-        "tag":  "中頻震顫（5–7 Hz）",
-        "note": (
-            "此頻段最常見於原發性震顫（Essential Tremor），\n"
-            "也可能與甲狀腺機能亢進、焦慮或咖啡因攝取過量有關。\n\n"
-            "⚠ 本結果僅供參考，無法作為診斷依據。\n"
-            "建議諮詢神經科或家醫科醫師釐清原因。"
-        ),
+        "tag":  "中頻姿勢性震顫（5–7 Hz）",
+        "note": "屬重疊判讀區，需結合姿勢或任務情境判斷。\n建議至神經內科或家醫科就診。",
     },
     "8Hz": {
-        "tag":  "高頻震顫（7–9 Hz）",
-        "note": (
-            "此頻段多屬生理性震顫增強，常見誘因包括\n"
-            "疲勞、壓力、咖啡因、部分藥物或甲狀腺問題。\n\n"
-            "⚠ 本結果僅供參考，無法作為診斷依據。\n"
-            "若症狀持續或影響日常生活，建議就醫評估。"
-        ),
+        "tag":  "高頻生理性震顫（7–9 Hz）",
+        "note": "較常見於高頻姿勢性或生理性震顫。\n建議先調整生活型態，若症狀持續請至家醫科就診。",
     },
     "Normal": {
         "tag":  "未偵測到明顯震顫",
-        "note": (
-            "30 秒偵測期間未發現持續性震顫訊號，\n"
-            "手部活動在正常生理範圍內。\n\n"
-            "若仍有主觀不適感，建議在不同時段重複檢測，\n"
-            "或諮詢醫師進行進一步評估。"
-        ),
+        "note": "未偵測到明顯震顫，手部活動在正常範圍內。\n若仍有不適感，建議至家醫科說明症狀。",
     },
     "None": {
-        "tag":  "訊號不足",
-        "note": (
-            "偵測期間未收集到足夠的震顫訊號，\n"
-            "請確認手部置於感測器有效範圍內，再重新檢測。"
-        ),
+        "tag":  "訊號不足，無法判定",
+        "note": "未收集到足夠訊號，請確認手部位置後重新檢測。",
     },
 }
 
@@ -83,7 +60,7 @@ class CountdownRing(QWidget):
     """畫一個圓弧倒數環，progress 0.0→1.0"""
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setFixedSize(160, 160)
+        self.setFixedSize(140, 140)
         self._progress = 1.0          # 1.0 = 滿；0.0 = 空
         self._seconds_left = 0
         self._active = False
@@ -136,10 +113,10 @@ class CountdownRing(QWidget):
 class MiniBar(QWidget):
     """單一類別的垂直機率條 + 標籤"""
     BAR_COLORS = {
-        "Background": "#475569",
-        "4Hz":        "#38BDF8",
-        "6Hz":        "#34D399",
-        "8Hz":        "#F472B6",
+        "0 Hz": "#475569",
+        "4Hz":  "#38BDF8",
+        "6Hz":  "#34D399",
+        "8Hz":  "#F472B6",
     }
 
     def __init__(self, name: str, parent=None):
@@ -171,7 +148,7 @@ class MiniBar(QWidget):
 
         lbl = QLabel(name)
         lbl.setAlignment(Qt.AlignCenter)
-        lbl.setStyleSheet("color: #94A3B8; font-size: 11px; font-family: 'Courier New';")
+        lbl.setStyleSheet("color:#CBD5E1; font-size:13px; font-weight:bold; font-family: 'Courier New';")
 
         layout.addWidget(self.bar, alignment=Qt.AlignHCenter)
         layout.addWidget(lbl)
@@ -194,38 +171,70 @@ class GestureGUI(QWidget):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("手部震顫檢測系統")
-        self.setMinimumSize(480, 700)
-        self.resize(500, 820)
-        self._hw_ready = False   # 硬體尚未就緒
+        self._hw_ready = False
         self._session_active = False
         self._elapsed = 0
-        self._scores = {"4Hz": 0.0, "6Hz": 0.0, "8Hz": 0.0}
+        self._scores = {"Background": 0.0, "4Hz": 0.0, "6Hz": 0.0, "8Hz": 0.0}
 
         self._build_ui()
         self._build_timer()
 
+        # 自動適應螢幕高度（保留工作列空間）
+        from PySide6.QtWidgets import QApplication
+        screen = QApplication.primaryScreen().availableGeometry()
+        win_w = min(560, screen.width())
+        win_h = min(screen.height() - 40, screen.height())
+        self.resize(win_w, win_h)
+        # 置中顯示
+        self.move(
+            screen.x() + (screen.width() - win_w) // 2,
+            screen.y() + (screen.height() - win_h) // 2,
+        )
+
     # ── UI 建構 ───────────────────────────────────────────────────────
     def _build_ui(self):
+        from PySide6.QtWidgets import QScrollArea
         self.setStyleSheet("""
             QWidget {
                 background-color: #0F172A;
                 color: #F1F5F9;
                 font-family: 'Courier New', monospace;
             }
+            QScrollArea { border: none; }
+            QScrollBar:vertical {
+                background: #0F172A; width: 6px;
+            }
+            QScrollBar::handle:vertical {
+                background: #334155; border-radius: 3px;
+            }
         """)
 
-        root = QVBoxLayout(self)
+        # 外層：視窗主 layout 放 ScrollArea
+        outer = QVBoxLayout(self)
+        outer.setContentsMargins(0, 0, 0, 0)
+        outer.setSpacing(0)
+
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+
+        # 內層容器
+        container = QWidget()
+        root = QVBoxLayout(container)
         root.setContentsMargins(28, 28, 28, 28)
-        root.setSpacing(18)
+        root.setSpacing(14)
+
+        scroll.setWidget(container)
+        outer.addWidget(scroll)
 
         # 標題
-        title = QLabel("TREMOR DETECTION")
+        title = QLabel("手部震顫檢測系統")
         title.setAlignment(Qt.AlignCenter)
         title.setStyleSheet("""
-            font-size: 15px;
+            font-size: 20px;
             font-weight: bold;
-            letter-spacing: 4px;
-            color: #94A3B8;
+            letter-spacing: 3px;
+            color: #E2E8F0;
             padding-bottom: 4px;
         """)
         root.addWidget(title)
@@ -241,24 +250,25 @@ class GestureGUI(QWidget):
         self.ring = CountdownRing()
         ring_col.addWidget(self.ring, alignment=Qt.AlignCenter)
 
-        self.live_label = QLabel("──")
+        self.live_label = QLabel("")
         self.live_label.setAlignment(Qt.AlignCenter)
-        self.live_label.setStyleSheet("color:#64748B; font-size:13px; letter-spacing:2px;")
+        self.live_label.setStyleSheet("color:#94A3B8; font-size:18px; letter-spacing:2px; font-weight:bold;")
+        self.live_label.setVisible(False)
         ring_col.addWidget(self.live_label)
 
         ring_row.addLayout(ring_col)
         ring_row.addStretch()
         root.addLayout(ring_row)
 
-        # 機率條（小型，僅供參考）
-        root.addWidget(self._section_label("即時機率（參考）"))
+        # 機率條（偵測狀態）
+        root.addWidget(self._section_label("偵測狀態"))
         bars_row = QHBoxLayout()
         bars_row.setSpacing(0)
         self._mini_bars: dict[str, MiniBar] = {}
-        for name in ["Background", "4Hz", "6Hz", "8Hz"]:
+        for name in ["0 Hz", "4Hz", "6Hz", "8Hz"]:
             bars_row.addStretch()
             mb = MiniBar(name)
-            mb.setFixedHeight(120)
+            mb.setFixedHeight(110)
             self._mini_bars[name] = mb
             bars_row.addWidget(mb)
         bars_row.addStretch()
@@ -268,13 +278,13 @@ class GestureGUI(QWidget):
 
         # 啟動按鈕
         self.start_btn = QPushButton("▶  開始檢測")
-        self.start_btn.setFixedHeight(52)
+        self.start_btn.setFixedHeight(54)
         self.start_btn.setCursor(Qt.PointingHandCursor)
         self.start_btn.setStyleSheet("""
             QPushButton {
                 background: #1D4ED8;
-                color: #F1F5F9;
-                font-size: 15px;
+                color: #FFFFFF;
+                font-size: 18px;
                 font-weight: bold;
                 letter-spacing: 2px;
                 border-radius: 8px;
@@ -284,7 +294,7 @@ class GestureGUI(QWidget):
             QPushButton:pressed{ background: #1E40AF; }
             QPushButton:disabled{
                 background: #1E293B;
-                color: #475569;
+                color: #64748B;
             }
         """)
         self.start_btn.clicked.connect(self.start_session)
@@ -306,22 +316,22 @@ class GestureGUI(QWidget):
 
         result_title = QLabel("最終結果")
         result_title.setAlignment(Qt.AlignCenter)
-        result_title.setStyleSheet("color:#475569; font-size:11px; letter-spacing:3px;")
+        result_title.setStyleSheet("color:#94A3B8; font-size:14px; letter-spacing:3px;")
         result_inner.addWidget(result_title)
 
         self.result_label = QLabel("──")
         self.result_label.setAlignment(Qt.AlignCenter)
         self.result_label.setStyleSheet("""
-            font-size: 48px;
+            font-size: 56px;
             font-weight: bold;
-            color: #334155;
+            color: #475569;
             letter-spacing: 2px;
         """)
         result_inner.addWidget(self.result_label)
 
         self.result_sub = QLabel("")
         self.result_sub.setAlignment(Qt.AlignCenter)
-        self.result_sub.setStyleSheet("color:#475569; font-size:11px;")
+        self.result_sub.setStyleSheet("color:#94A3B8; font-size:13px;")
         result_inner.addWidget(self.result_sub)
 
         # 分隔線
@@ -330,21 +340,21 @@ class GestureGUI(QWidget):
         sep.setStyleSheet("color: #1E293B; margin: 4px 0;")
         result_inner.addWidget(sep)
 
-        # 頻率標籤（如「低頻震顫 3–5 Hz」）
+        # 頻率標籤
         self.advice_tag = QLabel("")
         self.advice_tag.setAlignment(Qt.AlignCenter)
         self.advice_tag.setWordWrap(True)
         self.advice_tag.setStyleSheet(
-            "color:#94A3B8; font-size:12px; font-weight:bold; letter-spacing:1px;"
+            "color:#CBD5E1; font-size:14px; font-weight:bold; letter-spacing:1px;"
         )
         result_inner.addWidget(self.advice_tag)
 
         # 臨床建議文字
         self.advice_label = QLabel("")
-        self.advice_label.setAlignment(Qt.AlignLeft | Qt.AlignTop)
+        self.advice_label.setAlignment(Qt.AlignCenter)
         self.advice_label.setWordWrap(True)
         self.advice_label.setStyleSheet(
-            "color:#64748B; font-size:11px; line-height:160%; padding: 4px 2px;"
+            "color:#CBD5E1; font-size:13px; line-height:180%; padding: 6px 4px;"
         )
         result_inner.addWidget(self.advice_label)
 
@@ -358,7 +368,7 @@ class GestureGUI(QWidget):
 
     def _section_label(self, text: str):
         lbl = QLabel(text)
-        lbl.setStyleSheet("color:#475569; font-size:11px; letter-spacing:2px;")
+        lbl.setStyleSheet("color:#94A3B8; font-size:13px; letter-spacing:2px;")
         return lbl
 
     # ── 計時器 ────────────────────────────────────────────────────────
@@ -376,15 +386,11 @@ class GestureGUI(QWidget):
         if left <= 0:
             self._timer.stop()
             self._session_active = False
-            # 有效幀太少（低於總幀數的 10%）→ 視為無明顯震顫
-            MIN_VALID_RATIO = 0.10
-            estimated_total_frames = DETECTION_DURATION * 10  # 約估每秒 10 幀
-            if self._valid_frames < estimated_total_frames * MIN_VALID_RATIO:
-                final = "Normal"
-            elif any(v > 0 for v in self._scores.values()):
-                final = max(self._scores, key=self._scores.get)
+            if self._valid_frames == 0:
+                final = "None"
             else:
-                final = "Normal"
+                winner = max(self._scores, key=self._scores.get)
+                final = "Normal" if winner == "Background" else winner
             self.show_final_result(final)
             self._restore_button()
 
@@ -401,7 +407,7 @@ class GestureGUI(QWidget):
             return
         self._session_active = True
         self._elapsed = 0
-        self._scores = {"4Hz": 0.0, "6Hz": 0.0, "8Hz": 0.0}
+        self._scores = {"Background": 0.0, "4Hz": 0.0, "6Hz": 0.0, "8Hz": 0.0}
         self._valid_frames = 0
 
         # 重設結果顯示
@@ -428,31 +434,27 @@ class GestureGUI(QWidget):
             return   # 尚未按下開始，畫面完全靜止
 
         # 更新即時機率條
-        self._mini_bars["Background"].set_value(prob_bg)
+        self._mini_bars["0 Hz"].set_value(prob_bg)
         self._mini_bars["4Hz"].set_value(prob_4hz)
         self._mini_bars["6Hz"].set_value(prob_6hz)
         self._mini_bars["8Hz"].set_value(prob_8hz)
 
-        # 更新即時手勢標籤
-        color = {"4Hz": "#38BDF8", "6Hz": "#34D399", "8Hz": "#F472B6"}.get(
-            current_gesture, "#475569"
-        )
-        self.live_label.setText(current_gesture)
-        self.live_label.setStyleSheet(f"color:{color}; font-size:14px; letter-spacing:2px; font-weight:bold;")
+        # 即時手勢標籤偵測中隱藏，避免與最終結果產生混淆
+        self.live_label.setVisible(False)
 
-        # 累積加權信心分數（只納入高信心幀，排除雜訊）
-        SCORE_TH = 0.5   # 低於此門檻的幀不納入統計
-        has_signal = False
+        # 累積加權信心分數（Background 也參與競爭）
+        SCORE_TH = 0.5
+        if prob_bg >= SCORE_TH:
+            self._scores["Background"] += prob_bg
+            self._valid_frames += 1
         if prob_4hz >= SCORE_TH:
             self._scores["4Hz"] += prob_4hz
-            has_signal = True
+            self._valid_frames += 1
         if prob_6hz >= SCORE_TH:
             self._scores["6Hz"] += prob_6hz
-            has_signal = True
+            self._valid_frames += 1
         if prob_8hz >= SCORE_TH:
             self._scores["8Hz"] += prob_8hz
-            has_signal = True
-        if has_signal:
             self._valid_frames += 1
 
     def show_final_result(self, hz_label: str):
